@@ -71,13 +71,17 @@ const processEffect = Effect.fnUntraced(function* (options: Options) {
         delete process.env.OPENCODE_PASSWORD
         delete process.env.OPENCODE_SERVER_PASSWORD
       }
+      // FORK(unsecured-serve): plain `serve` with no OPENCODE_SERVER_PASSWORD runs
+      // unsecured instead of generating a random credential. Service mode keeps
+      // the generated-credential behavior.
       const password =
         options.mode === "service"
           ? config.password || randomBytes(32).toString("base64url")
           : environmentPassword
             ? Redacted.value(environmentPassword)
-            : randomBytes(32).toString("base64url")
-      if (!password) return yield* Effect.fail(new Error("Missing server password"))
+            : ""
+      if (options.mode === "service" && !password)
+        return yield* Effect.fail(new Error("Missing server password"))
       const instanceID = randomUUID()
       const transform = yield* WebUi.handler()
       const server = yield* start(
@@ -157,7 +161,8 @@ const processEffect = Effect.fnUntraced(function* (options: Options) {
       if (server === undefined) return
       const url = HttpServer.formatAddress(server.address)
       console.log(options.mode === "stdio" ? JSON.stringify({ url }) : `server listening on ${url}`)
-      if (foreground && !environmentPassword) console.log(`server password ${password}`)
+      if (foreground && !environmentPassword)
+        console.log(password ? `server password ${password}` : "server is unsecured (no password)")
       return yield* options.mode === "service"
         ? server.shutdown
         : options.mode === "stdio"
