@@ -322,6 +322,11 @@ export const make = Effect.fn("Session.make")(function* () {
     input: { messageID: SessionMessage.ID; files?: boolean },
   ) {
     const session = yield* get(sessionID)
+    // Revert is a stop-and-rewind: preempt any active turn (a no-op when idle)
+    // and wait for its settlement before staging, so mid-run reverts work
+    // instead of failing with BusyError. A successor admitted during the
+    // interrupted run's cleanup still trips the guard below.
+    yield* execution.interrupt(sessionID, { awaitSettlement: true })
     if (yield* execution.isActive(sessionID)) return yield* new BusyError({ sessionID })
     return yield* SessionRevert.stage({ session, messageID: input.messageID, files: input.files }).pipe(
       Effect.provideService(Instance.Service, instances),
@@ -331,6 +336,7 @@ export const make = Effect.fn("Session.make")(function* () {
   })
   const clear = Effect.fn("Session.revert.clear")(function* (sessionID: SessionSchema.ID) {
     const session = yield* get(sessionID)
+    yield* execution.interrupt(sessionID, { awaitSettlement: true })
     if (yield* execution.isActive(sessionID)) return yield* new BusyError({ sessionID })
     yield* SessionRevert.clear(session).pipe(
       Effect.provideService(Instance.Service, instances),
@@ -340,6 +346,7 @@ export const make = Effect.fn("Session.make")(function* () {
   })
   const commit = Effect.fn("Session.revert.commit")(function* (sessionID: SessionSchema.ID) {
     const session = yield* get(sessionID)
+    yield* execution.interrupt(sessionID, { awaitSettlement: true })
     if (yield* execution.isActive(sessionID)) return yield* new BusyError({ sessionID })
     return yield* SessionRevert.commit(bus, session)
   })
