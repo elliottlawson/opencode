@@ -8,6 +8,7 @@ import { useLanguage } from "@/runtime/i18n/language"
 import { extractPromptContext, extractPromptFromMessage } from "@/composer/prompt"
 import { promptLength } from "@/composer/prompt-parts"
 import { showToast } from "@/shell/notifications/toast"
+import { describeRequestError } from "./request-error"
 import type { SessionModel } from "./model"
 
 export function createSessionRevert(input: {
@@ -26,7 +27,7 @@ export function createSessionRevert(input: {
       .catch((error) => {
         showToast({
           title: language.t("common.requestFailed"),
-          description: error instanceof Error ? error.message : String(error),
+          description: describeRequestError(error),
         })
 
         return false
@@ -51,7 +52,6 @@ export function createSessionRevert(input: {
     if (!sessionID) return
     const owner = input.session.ownership.capture()
     const target = prompt.capture()
-
     // An undelivered prompt has no history to rewind. Withdraw it like the TUI
     // instead of interrupting the work it is waiting behind.
     if (data.session.input.has(sessionID, message.id)) {
@@ -62,13 +62,9 @@ export function createSessionRevert(input: {
       return
     }
 
-    // Interrupt acknowledges before the execution settles, and staging a busy Session fails. The
-    // local status can lag the server either way, so always settle first; both are idle no-ops.
-    // Like the TUI, stop at the first failure instead of waiting on work that was never interrupted.
-    if (!(await request(() => server.api.session.interrupt({ sessionID })))) return
-
-    if (!(await request(() => server.api.session.wait({ sessionID })))) return
-
+    // The server preempts an active turn as part of staging the revert, so no
+    // client-side interrupt is needed here.
+    if (!(await request(() => server.api.session.revert.stage({ sessionID, messageID: message.id })))) return
     if (!(await request(() => server.api.session.revert.stage({ sessionID, messageID: message.id })))) return
     // Like the TUI, pending inputs are left alone: the revert hides them, committing it drops them,
     // and redo delivers them.
