@@ -7,6 +7,7 @@ import { useLanguage } from "@/runtime/i18n/language"
 import { commentContextItem } from "@/composer/comment-note"
 import { extractPromptComments, extractPromptFromMessage } from "@/composer/prompt"
 import { showToast } from "@/shell/notifications/toast"
+import { describeRequestError } from "./request-error"
 import type { SessionModel } from "./model"
 
 export function createSessionRevert(input: {
@@ -25,7 +26,7 @@ export function createSessionRevert(input: {
       .catch((error) => {
         showToast({
           title: language.t("common.requestFailed"),
-          description: error instanceof Error ? error.message : String(error),
+          description: describeRequestError(error),
         })
         return false
       })
@@ -43,9 +44,8 @@ export function createSessionRevert(input: {
     if (!sessionID) return
     const owner = input.session.ownership.capture()
     const target = prompt.capture()
-    if (data.session.status(sessionID) === "running") {
-      await server.api.session.interrupt({ sessionID }).catch(() => undefined)
-    }
+    // The server preempts an active turn as part of staging the revert, so no
+    // client-side interrupt is needed here.
     if (!(await request(() => server.api.session.revert.stage({ sessionID, messageID: message.id })))) return
     // Reverting to a previous prompt discards the pending queue (and pending
     // steers): they were written against the history being rewound. Cancel
