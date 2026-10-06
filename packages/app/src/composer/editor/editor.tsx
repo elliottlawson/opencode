@@ -327,7 +327,7 @@ export function ComposerEditor(props: ComposerEditorProps) {
               </Show>
             </div>
           </div>
-          <div data-slot="composer-actions" class="flex shrink-0 items-center">
+          <div data-slot="composer-actions" class="relative z-20 flex shrink-0 items-center">
             <Show when={state.mode === "normal"}>
               <ComposerEditorAlternateDelivery
                 controller={props.controller}
@@ -733,6 +733,7 @@ export function ComposerEditorSelect(props: {
   return (
     <Tooltip
       placement="top"
+      class={props.class}
       value={
         <>
           {props.title}
@@ -901,6 +902,7 @@ function ComposerEditorAlternateDelivery(props: { controller: ComposerEditorMode
               "animate-in fade-in": presence.animate() && presence.show(),
               "animate-out fade-out fill-mode-forwards": presence.animate() && !presence.show(),
             }}
+            onPointerDown={(event: PointerEvent) => event.preventDefault()}
             onClick={() => props.controller.submit({ alternate: true })}
           >
             {delivery === "steer" ? i18n.t("ui.promptInput.steer") : i18n.t("ui.promptInput.queue")}
@@ -936,8 +938,14 @@ export function ComposerEditorSubmitButton(props: {
         tabIndex={props.mode === "normal" ? undefined : -1}
         icon={<Icon name={props.stopping ? "stop" : props.mode === "shell" ? "arrow-undo-down" : "arrow-up"} />}
         variant="submit"
-        class="size-7 rounded-md p-[6px]"
+        class="relative z-20 size-7 rounded-md p-[6px] before:absolute before:-inset-2 before:content-['']"
         aria-label={props.stopping ? props.stopLabel : props.sendLabel}
+        onPointerDown={(event: PointerEvent) => {
+          if (!props.disabled || props.stopping) {
+            // Prevent virtual keyboard blur from shifting layout and cancelling the tap
+            event.preventDefault()
+          }
+        }}
         onClick={(event) => {
           event.preventDefault()
           event.stopPropagation()

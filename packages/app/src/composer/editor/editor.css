@@ -25,9 +25,21 @@
   );
 }
 
-[data-component="composer"]:not(:hover) .composer-variant-default:not(:focus-visible, [data-expanded]) {
-  opacity: 0;
-  pointer-events: none;
+/* On mobile screens (< 640px) or devices without hover, hide the default variant entirely */
+@media (max-width: 639px), (hover: none) {
+  .composer-variant-default:not([data-expanded]),
+  [data-component="tooltip-v2-trigger"]:has(.composer-variant-default:not([data-expanded])) {
+    display: none !important;
+  }
+}
+
+/* On desktop with pointer hover, hide the default variant until the composer is hovered */
+@media (min-width: 640px) and (hover: hover) {
+  [data-component="composer"]:not(:hover) .composer-variant-default:not(:focus-visible, [data-expanded]),
+  [data-component="composer"]:not(:hover) [data-component="tooltip-v2-trigger"]:has(.composer-variant-default:not(:focus-visible, [data-expanded])) {
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 
 [data-color-scheme="dark"] [data-component="composer"][data-dock-border-underlay="true"],
