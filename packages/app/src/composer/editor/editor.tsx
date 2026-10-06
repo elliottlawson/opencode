@@ -449,7 +449,7 @@ export function ComposerEditor(props: ComposerEditorProps) {
               </Show>
             </div>
           </div>
-          <div data-slot="composer-actions" class="flex shrink-0 items-center">
+          <div data-slot="composer-actions" class="relative z-20 flex shrink-0 items-center">
             <Show when={state.mode === "normal"}>
               <ComposerEditorAlternateDelivery
                 controller={props.controller}
@@ -1079,6 +1079,7 @@ function ComposerEditorSelect(props: {
     <Tooltip
       inactive={props.mobileDrawer && mobile()}
       placement="top"
+      class={props.class}
       value={
         <>
           {props.title}
@@ -1414,6 +1415,7 @@ function ComposerEditorAlternateDelivery(props: { controller: ComposerEditorMode
             variant="ghost-faint"
             size="small"
             class="me-3 gap-1.5 px-1.5 ![font-weight:530]"
+            onPointerDown={(event: PointerEvent) => event.preventDefault()}
             onClick={() => props.controller.submit({ alternate: true })}
           >
             {delivery === "steer" ? i18n.t("ui.promptInput.steer") : i18n.t("ui.promptInput.queue")}
@@ -1457,8 +1459,14 @@ function ComposerEditorSubmitButton(props: {
         }
         aria-busy={props.held && !props.stopping}
         variant="submit"
-        class="size-7 rounded-md p-[6px]"
+        class="relative z-20 size-7 rounded-md p-[6px] before:absolute before:-inset-2 before:content-['']"
         aria-label={props.stopping ? props.stopLabel : props.sendLabel}
+        onPointerDown={(event: PointerEvent) => {
+          if (!props.disabled || props.stopping) {
+            // Prevent virtual keyboard blur from shifting layout and cancelling the tap
+            event.preventDefault()
+          }
+        }}
         onClick={(event) => {
           event.preventDefault()
           event.stopPropagation()
